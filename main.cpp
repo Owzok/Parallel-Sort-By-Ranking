@@ -253,11 +253,11 @@ int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
     double start_time = MPI_Wtime();
 
-    string input = "asiuydfgaheiugheao";
+    string input = "martinperezbonan";
 
     int rank, size;
-    const int rows = 3;
-    const int cols = 3;
+    const int rows = 2;
+    const int cols = 2;
 
     if (input.size() % (rows * cols) != 0){
         if (rank == 0) cerr << "Input Size [" << input.size() << "] doesn't match row * col size [" << rows * cols << "]" << endl;
@@ -282,9 +282,9 @@ int main(int argc, char** argv) {
     int row = rank / cols;
     int col = rank % cols;
 
-    int amount_data = input.size()/rank;
+    int msg_size = input.size()/(rows*cols);
 
-    map<int, string> local_data = {{rank, input.substr(rank*(amount_data), (amount_data))}};
+    map<int, string> local_data = {{rank, input.substr(rank*(msg_size), msg_size)}};
 
     map<int, string> resulting_data;
 
@@ -317,8 +317,6 @@ int main(int argc, char** argv) {
     if (rank == 0) cout << "Tiempo de ejecución: " << end_time - start_time << " segundos" << endl;
 
     MPI_Finalize();
-
-    cout << endl;
 
     return 0;
 }
