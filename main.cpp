@@ -5,7 +5,24 @@
 #include <iterator>
 #include <iostream>
 #include <algorithm>
+#include <random>
 using namespace std;
+
+string generateRandomString(size_t length) {
+    const string characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    random_device rd;
+    mt19937 generator(rd());
+    uniform_int_distribution<size_t> distribution(0, characters.size() - 1);
+
+    string randomString;
+    randomString.reserve(length);
+
+    for (size_t i = 0; i < length; ++i) {
+        randomString += characters[distribution(generator)];
+    }
+
+    return randomString;
+}
 
 /**
  * @brief Concatena las strings asociadas con cada rank en el map.
@@ -64,7 +81,7 @@ vector<int> local_rank(const string& local_A, const string& A) {
 void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local_data) {
     int row = rank / cols;
     int col = rank % cols;
-    char recv_buffer[200];
+    char recv_buffer[10000];
 
     for (int step = 0; step < rows - 1; ++step) {
         int send_to = ((row + 1) % rows) * cols + col;      // same col but below
@@ -73,7 +90,7 @@ void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local
         string send_buffer = concatenar(local_data);
 
         MPI_Request send_request, recv_request;
-        MPI_Irecv(recv_buffer, 200, MPI_CHAR, receive_from, 0, MPI_COMM_WORLD, &recv_request);
+        MPI_Irecv(recv_buffer, 10000, MPI_CHAR, receive_from, 0, MPI_COMM_WORLD, &recv_request);
         MPI_Isend(send_buffer.c_str(), send_buffer.size() + 1, MPI_CHAR, send_to, 0, MPI_COMM_WORLD, &send_request);
 
         MPI_Wait(&recv_request, MPI_STATUS_IGNORE);
@@ -83,6 +100,64 @@ void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local
         int source_rank = (rank - cols + size) % size; // calculate the rank of the data sender
         local_data[source_rank] = received_string;
     }
+}
+
+string bubbleSort(const string& input) {
+    string sortedString = input;
+    int n = sortedString.size();
+
+    for (int i = 0; i < n - 1; ++i) {
+        for (int j = 0; j < n - i - 1; ++j) {
+            if (sortedString[j] > sortedString[j + 1]) {
+                swap(sortedString[j], sortedString[j + 1]);
+            }
+        }
+    }
+
+    return sortedString;
+}
+
+void merge(string& str, int left, int mid, int right) {
+    int n1 = mid - left + 1;
+    int n2 = right - mid;
+
+    string leftSub = str.substr(left, n1);
+    string rightSub = str.substr(mid + 1, n2);
+
+    int i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        if (leftSub[i] <= rightSub[j]) {
+            str[k++] = leftSub[i++];
+        } else {
+            str[k++] = rightSub[j++];
+        }
+    }
+
+    while (i < n1) {
+        str[k++] = leftSub[i++];
+    }
+
+    while (j < n2) {
+        str[k++] = rightSub[j++];
+    }
+}
+
+// Merge Sort Function
+void mergeSortHelper(string& str, int left, int right) {
+    if (left < right) {
+        int mid = left + (right - left) / 2;
+
+        mergeSortHelper(str, left, mid);
+        mergeSortHelper(str, mid + 1, right);
+
+        merge(str, left, mid, right);
+    }
+}
+
+string mergeSort(const string& input) {
+    string sortedString = input;
+    mergeSortHelper(sortedString, 0, sortedString.size() - 1);
+    return sortedString;
 }
 
 /**
@@ -102,7 +177,7 @@ void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local
 void reverse_broadcast_step(int rank, int rows, int cols, const string& starting_data, map<int, string>& resulting_data) {
     int row = rank / cols;
     int col = rank % cols;
-    char recv_buffer[200];
+    char recv_buffer[10000];
 
     if (col == row) {
         for (int c = 0; c < cols; ++c) {
@@ -114,7 +189,7 @@ void reverse_broadcast_step(int rank, int rows, int cols, const string& starting
         resulting_data[0] = starting_data;
     } else {
         int send_from = row * cols + row;
-        MPI_Recv(recv_buffer, 200, MPI_CHAR, send_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(recv_buffer, 10000, MPI_CHAR, send_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         string received_string(recv_buffer);
         resulting_data[0] = received_string;
     }
@@ -182,7 +257,7 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
     int row = rank / cols;
     int col = rank % cols;
     int diagonal_process = row * cols + row;
-    char recv_buffer[200];
+    char recv_buffer[10000];
     string recv_word;
 
     // Enviar los datos a las diagonales
@@ -233,7 +308,7 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
                 vector<int> received_ranks(aggregated_ranks.size());
                 // Recibe la info de cada diagonal
                 MPI_Recv(received_ranks.data(), received_ranks.size(), MPI_INT, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                MPI_Recv(recv_buffer, 200, MPI_CHAR, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(recv_buffer, 10000, MPI_CHAR, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 // Tranforma la información del buffer en una string
                 string received_string(recv_buffer);
                 recv_word += received_string;
@@ -253,11 +328,11 @@ int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
     double start_time = MPI_Wtime();
 
-    string input = "martinperezbonan";
+    string input = generateRandomString(36*100);
 
     int rank, size;
-    const int rows = 2;
-    const int cols = 2;
+    const int rows = 6;
+    const int cols = 6;
 
     if (input.size() % (rows * cols) != 0){
         if (rank == 0) cerr << "Input Size [" << input.size() << "] doesn't match row * col size [" << rows * cols << "]" << endl;
@@ -303,7 +378,12 @@ int main(int argc, char** argv) {
     if (rank == 0) cout << "Tiempo de ejecución (BCast): " << bcast_time - gossip_time << " segundos" << endl;
     // ---------------------------------------------- Realiza el paso de sort previo al local ranking. Utiliza quick sort.
     double sort_time = MPI_Wtime();
-    sort(gossip_result.begin(), gossip_result.end()); 
+    // QuickSort
+       sort(gossip_result.begin(), gossip_result.end()); 
+    // BubbleSort
+    //  gossip_result = bubbleSort(gossip_result);
+    // MergeSort
+    //  gossip_result = mergeSort(gossip_result);
 
     if (rank == 0) cout << "Tiempo de ejecución (Sort): " << sort_time - bcast_time << " segundos" << endl;
     // ---------------------------------------------- Local ranking y Reduce
