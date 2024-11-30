@@ -324,31 +324,43 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
     return sorted_result;
 }
 
-
 int main(int argc, char** argv) {
     MPI_Init(&argc, &argv);
 
     int rank, size;
-    const int rows = 6;
-    const int cols = 6;
-
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    if (size != rows * cols) {
-        if (rank == 0) cerr << "Error: This program requires exactly " << rows * cols << " processes." << endl;
+    int sqrt_size = static_cast<int>(sqrt(size));
+    if (sqrt_size * sqrt_size != size) {
+        if (rank == 0) cerr << "Error: Number of processes must be a perfect square." << endl;
+        MPI_Finalize();
+        return 1;
+    }
+
+    const int rows = sqrt_size;
+    const int cols = sqrt_size;
+
+    if (argc < 2) {
+        if (rank == 0) cerr << "Usage: mpiexec -n <num_processes> ./program <message_size>" << endl;
+        MPI_Finalize();
+        return 1;
+    }
+
+    int msg_size = atoi(argv[1])/size;
+    if (msg_size <= 0) {
+        if (rank == 0) cerr << "Error: Message size must be a positive integer." << endl;
         MPI_Finalize();
         return 1;
     }
 
     int total_elements = rows * cols;
-    int msg_size = 36;
     string input;
 
     if (rank == 0) {
-        input = generateRandomString(total_elements * msg_size);
-        if (input.size() % (rows * cols) != 0) {
-            cerr << "Input Size [" << input.size() << "] doesn't match row * col size [" << rows * cols << "]" << endl;
+        input = generateRandomString(msg_size * total_elements);
+        if (input.size() % total_elements != 0) {
+            cerr << "Input Size [" << input.size() << "] doesn't match row * col size [" << total_elements << "]" << endl;
             MPI_Finalize();
             return 1;
         }
