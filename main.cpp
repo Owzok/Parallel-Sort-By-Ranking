@@ -8,6 +8,10 @@
 #include <random>
 using namespace std;
 
+float t1,t2,t3,t4,t5,t6,t7,t8;
+float t9, t10, t11, t12, t13, t14, t15, t16;
+float t_inicial, t_final;
+
 string generateRandomString(size_t length) {
     const string_view characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     random_device rd;
@@ -245,7 +249,20 @@ string sort_and_print_by_rank(const vector<int>& aggregated_ranks, const string&
  * @return void
  */
 string calculate_and_print_ranks(int rank, int rows, int cols, const string& starting_data, const string& result) {
-    vector<int> local_ranking = local_rank(starting_data, result);
+    string sorted_starting_data = starting_data;
+
+    //SORT (4)
+
+    t7 = MPI_Wtime();
+    sort(sorted_starting_data.begin(), sorted_starting_data.end());
+    t8 = MPI_Wtime();
+
+    // LOCAL RANKING (5)
+
+    t9 = MPI_Wtime();
+    vector<int> local_ranking = local_rank(sorted_starting_data, result);
+    t10 = MPI_Wtime();
+
     string sorted_result;
 
     //cout << "\n-=-=-=-=-= Process " << rank << " Local ranks: ";
@@ -260,11 +277,14 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
     char recv_buffer[10000];
     string recv_word;
 
+    // REDUCE (6)
     // Enviar los datos a las diagonales
+
+    t11 = MPI_Wtime();
     if (col != row) 
     {
         MPI_Send(local_ranking.data(), local_ranking.size(), MPI_INT, diagonal_process, 0, MPI_COMM_WORLD);
-        cout << "Process " << rank << " sent ranks to diagonal process " << diagonal_process << endl;
+        // cout << "Process " << rank << " sent ranks to diagonal process " << diagonal_process << endl; (COMENTADO)
     } 
     else 
     {
@@ -290,13 +310,17 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
                 }
             }
         }
-        
+        t12 = MPI_Wtime();
+
+        // GATHER (6)
         // Después cada diagonal envía su ranking y string al proceso 0
+
+        t13 = MPI_Wtime();
         if (rank != 0) 
         {
             MPI_Send(aggregated_ranks.data(), aggregated_ranks.size(), MPI_INT, 0, 1, MPI_COMM_WORLD);
             MPI_Send(result.c_str(), result.size() + 1, MPI_CHAR, 0, 1, MPI_COMM_WORLD);
-            cout << "Diagonal process " << rank << " sent aggregated ranks to Process 0" << endl;
+            // cout << "Diagonal process " << rank << " sent aggregated ranks to Process 0" << endl; (COMENTADO)
         } 
         else 
         {
@@ -313,12 +337,16 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
                 string received_string(recv_buffer);
                 recv_word += received_string;
 
-                cout << "Process 0 received ranks from diagonal process " << d_proc << endl;
+                // cout << "Process 0 received ranks from diagonal process " << d_proc << endl; (COMENTADO)
                 // Expande global ranks
                 global_ranks.insert(global_ranks.end(), received_ranks.begin(), received_ranks.end());
             }
-            // Usa global ranks y 
+
+            t14 = MPI_Wtime();
+
+            t15 = MPI_Wtime();
             sorted_result = sort_and_print_by_rank(global_ranks, (result + recv_word));
+            t16 = MPI_Wtime();
         }
     }
     return sorted_result;
@@ -369,25 +397,50 @@ int main(int argc, char** argv) {
     char* local_string = new char[msg_size + 1];
     local_string[msg_size] = '\0';
 
+    //SCATTER (1)
+
+    t_inicial = MPI_Wtime();
+
+    t1 = MPI_Wtime();
     MPI_Scatter(input.c_str(), msg_size, MPI_CHAR, local_string, msg_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+    t2 = MPI_Wtime();
 
     string local_data_str(local_string);
     delete[] local_string;
 
-    cout << "Process " << rank << " received: " << local_data_str << endl;
+    // cout << "Process " << rank << " received: " << local_data_str << endl;  (COMENTADO)
 
     map<int, string> local_data = {{rank, local_data_str}};
     map<int, string> resulting_data;
 
+    // GOSSIP (2)
+
+    t3 = MPI_Wtime();
     gossip_step(rank, rows, cols, size, local_data);
+    t4 = MPI_Wtime();
     string gossip_result = concatenar(local_data);
 
+    // BROADCAST (3)
+
+    t5 = MPI_Wtime();
     reverse_broadcast_step(rank, rows, cols, gossip_result, resulting_data);
+    t6 = MPI_Wtime();
+
     string result2 = concatenar(resulting_data);
 
+    // SORT, LOCAL, RANKING, REDUCE Y GATHER
     string final_output = calculate_and_print_ranks(rank, rows, cols, gossip_result, result2);
 
-    if (rank == 0) cout << "Final result: " << final_output << endl;
+    // if (rank == 0) cout << "Final result: " << final_output << endl;
+
+    t_final = MPI_Wtime();
+
+    if (rank == 0){
+
+        cout << "Ejecucion: " << ((t_final-t_inicial) -  (t16-t15)) << endl;
+        cout << "Computo: " << ((t8-t7) + (t10-t9)) << endl;
+        cout << "Comunicacion: " << ((t_final - t_inicial) - (t16 - t15) - ((t8 - t7) + (t10 - t9)));
+    }
 
     MPI_Finalize();
     return 0;
