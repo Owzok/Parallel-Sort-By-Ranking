@@ -6,6 +6,7 @@
 #include <iostream>
 #include <algorithm>
 #include <random>
+#include <iomanip> // Para std::setprecision
 using namespace std;
 
 float t1,t2,t3,t4,t5,t6,t7,t8;
@@ -435,11 +436,13 @@ int main(int argc, char** argv) {
 
     t_final = MPI_Wtime();
 
-    if (rank == 0){
+    if (rank == 0)
+    {
+        cout << fixed << setprecision(10);
 
-        cout << "Ejecucion: " << ((t_final-t_inicial) -  (t16-t15)) << endl;
-        cout << "Computo: " << ((t8-t7) + (t10-t9)) << endl;
-        cout << "Comunicacion: " << ((t_final - t_inicial) - (t16 - t15) - ((t8 - t7) + (t10 - t9)));
+        cout << "Ejecucion: " << ((t_final - t_inicial) - (t16 - t15)) << endl;
+        cout << "Computo: " << ((t8 - t7) + (t10 - t9)) << endl;
+        cout << "Comunicacion: " << ((t_final - t_inicial) - (t16 - t15) - ((t8 - t7) + (t10 - t9))) << endl;
     }
 
     MPI_Finalize();
