@@ -28,7 +28,6 @@ string generateRandomString(size_t length) {
 
     return randomString;
 }
-
 string concatenar(const map<int, string>& data_by_rank) {
     string result;
     for (const auto& entry : data_by_rank) {
