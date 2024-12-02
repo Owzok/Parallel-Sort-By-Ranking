@@ -60,8 +60,8 @@ plt.yscale("log")
 # plt.ylim(0, 123000)
 plt.ylabel("Tejec (seg)")
 plt.xlabel("#Process")
-plt.title("Quicksort en paralelo - Eficiencia")
-plt.savefig("/Users/paolovasquezgrahammer/desktop/quicksort_eficiencia")
+plt.title("Ordenamiento por ranking (teórico) - Implementado")
+plt.savefig("/Users/paolovasquezgrahammer/desktop/ranking_teo_implementado")
 plt.show()
 
 #Cambiar los respectivos nombre de acuerdo a la conveniencia

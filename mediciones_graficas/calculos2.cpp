@@ -1,50 +1,56 @@
 #include <iostream>
-#include <iomanip> // Para std::fixed y std::setprecision
 #include <cmath>
+#include <iomanip>
 
-#define N 14400 // Define el valor de n como una constante
+// Definimos N como constante
+#define N 14400 // Cambia este valor según tus necesidades
 
-double calcular_expresion(double p) {
-    if (p <= 0) {
-        throw std::invalid_argument("p debe ser mayor que 0.");
-    }
-
-    // Primer término: p * (n / p)
-    double term1 = p * (N / p);
-
-    // Segundo término: 2 * log2(sqrt(p)) * (n / sqrt(p))
-    double term2 = 2 * (std::log(std::sqrt(p)) / std::log(2)) * (N / std::sqrt(p));
-
-    // Tercer término: sqrt(p) * log2(sqrt(p)) * (n / p)
-    double term3 = std::sqrt(p) * (std::log(std::sqrt(p)) / std::log(2)) * (N / p);
-
-    // Cuarto término: (n / sqrt(p)) * log2(n / sqrt(p))
-    double term4 = (N / std::sqrt(p)) * (std::log(N / std::sqrt(p)) / std::log(2));
-
-    // Quinto término: (n^2 / p)
-    double term5 = (N * N) / p;
-
-    // Sexto término: sqrt(p) * (n / sqrt(p))
-    double term6 = std::sqrt(p) * (N / std::sqrt(p));
-
-    // Sumar todos los términos
-    return term1 + term2 + term3 + term4 + term5 + term6;
+// Declaración de funciones para los términos de la fórmula
+double calcularTermino1(double p, double alpha, double beta)
+{
+    return p * (alpha + (N / (p * beta)));
 }
 
-int main() {
-    double p;
+double calcularTermino2(double p, double alpha, double beta)
+{
+    return 2 * std::log(std::sqrt(p)) * (alpha + (N / std::sqrt(p) * beta));
+}
+
+double calcularTermino3(double p, double alpha, double beta)
+{
+    return std::sqrt(p) * std::log(std::sqrt(p)) * (alpha + (N / std::sqrt(p) * beta));
+}
+
+double calcularTermino4(double p)
+{
+    return 2 * (N / std::sqrt(p)) * std::log(N / std::sqrt(p));
+}
+
+double calcularTermino5(double p, double alpha, double beta)
+{
+    return std::sqrt(p) * (alpha + (N / std::sqrt(p) * beta));
+}
+
+int main()
+{
+    double p, alpha = 2.0, beta = 3.0; // Cambia estos valores según necesidad
 
     std::cout << "Ingrese el valor de p: ";
     std::cin >> p;
 
-    try {
-        double resultado = calcular_expresion(p);
-        // Mostrar el resultado con 6 decimales
-        std::cout << std::fixed << std::setprecision(6);
-        std::cout << "El resultado de la expresión es: " << resultado << std::endl;
-    } catch (const std::invalid_argument &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
+    // Calcular cada término
+    double T1 = calcularTermino1(p, alpha, beta);
+    double T2 = calcularTermino2(p, alpha, beta);
+    double T3 = calcularTermino3(p, alpha, beta);
+    double T4 = calcularTermino4(p);
+    double T5 = calcularTermino5(p, alpha, beta);
+
+    // Suma de términos
+    double T_ideal = T1 + T2 + T3 + T4 + T5;
+
+    // Resultado
+    std::cout << std::fixed << std::setprecision(4);
+    std::cout << "El valor aproximado de T_ideal es: " << T_ideal << std::endl;
 
     return 0;
 }

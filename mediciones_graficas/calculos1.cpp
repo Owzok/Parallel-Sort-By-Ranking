@@ -1,36 +1,44 @@
 #include <iostream>
-#include <iomanip> // Para std::fixed y std::setprecision
 #include <cmath>
+#include <iomanip>
 
-#define N 14400 // Define el valor de n como una constante
+// Definimos N como constante
+#define N 14400 // Cambia este valor según tus necesidades
 
-double calcular_expresion(double p) {
-    if (p <= 0) {
-        throw std::invalid_argument("p debe ser mayor que 0.");
-    }
-
-    double term1 = 2 * p * (N / p);
-    double term2 = 3 * std::sqrt(p) * (N / std::sqrt(p));
-    double term3 = (N / std::sqrt(p)) * (std::log(N / std::sqrt(p)) / std::log(2)); // Log base 2
-    double term4 = (N * N) / p;
-
-    return term1 + term2 + term3 + term4;
+// Declaración de funciones para los términos de la fórmula
+double calcularT1(double p, double x, double beta)
+{
+    return 2 * p * (x + (N / (p * beta)));
 }
 
-int main() {
-    double p;
+double calcularT2(double p, double alpha, double beta)
+{
+    return 3 * std::sqrt(p) * (alpha + (N / std::sqrt(p) * beta));
+}
+
+double calcularT3(double p)
+{
+    return 2 * (N / std::sqrt(p)) * std::log(N / std::sqrt(p));
+}
+
+int main()
+{
+    double p, x = 5.0, alpha = 2.0, beta = 3.0; // Puedes cambiar x, α y β según necesidad
 
     std::cout << "Ingrese el valor de p: ";
     std::cin >> p;
 
-    try {
-        double resultado = calcular_expresion(p);
-        // Mostrar el resultado con 6 decimales
-        std::cout << std::fixed << std::setprecision(10);
-        std::cout << "El resultado de la expresión es: " << resultado << std::endl;
-    } catch (const std::invalid_argument &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-    }
+    // Calcular cada término
+    double T1 = calcularT1(p, x, beta);
+    double T2 = calcularT2(p, alpha, beta);
+    double T3 = calcularT3(p);
+
+    // Suma de términos
+    double T_imp = T1 + T2 + T3;
+
+    // Resultado
+    std::cout << std::fixed << std::setprecision(4);
+    std::cout << "El valor aproximado de T_imp es: " << T_imp << std::endl;
 
     return 0;
 }

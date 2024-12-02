@@ -29,14 +29,6 @@ string generateRandomString(size_t length) {
     return randomString;
 }
 
-/**
- * @brief Concatena las strings asociadas con cada rank en el map.
- *
- * Concatena las strings en el orden de los ranks. El menor rank sería la primera string y el mayor el último.
- *
- * @param data_by_rank Un mapa donde las llaves son los rangos y los valores las stings.
- * @return Una string que sea la concatenación adecuada.
- */
 string concatenar(const map<int, string>& data_by_rank) {
     string result;
     for (const auto& entry : data_by_rank) {
@@ -45,44 +37,15 @@ string concatenar(const map<int, string>& data_by_rank) {
     return result;
 }
 
-/**
- * @brief Calcula el rango local de cada carácter en la cadena A comparado con la cadena local_A.
- *
- * Este método calcula el número de caracteres en la cadena local_A que son menores que cada carácter en la cadena A.
- * El resultado es un vector de enteros, donde cada elemento representa el rango local del carácter correspondiente en la cadena A.
- *
- * @param local_A La cadena local que se utilizará para comparar con cada carácter en la cadena A.
- * @param A La cadena completa que se utilizará para comparar con cada carácter en la cadena local_A.
- * @return Un vector de enteros que representa el rango local de cada carácter en la cadena A.
- */
 vector<int> local_rank(const string& local_A, const string& A) {
     vector<int> rank_counts(A.size(), 0);
 
     for (size_t i = 0; i < A.size(); i++) {
-        for (size_t j = 0; j < local_A.size(); j++) {
-            if (local_A[j] <= A[i]) {
-                rank_counts[i]++;
-            }
+        rank_counts[i] = lower_bound(local_A.begin(), local_A.end(), A[i]) - local_A.begin();
         }
-    }
 
     return rank_counts;
 }
-
-/**
- * @brief Realiza el paso de "Gossip".
- *
- * La función simula un protocolo "Gossip" donde cada proceso envía su data a los procesos vecinos de forma vertical.
- * La función actualiza los datos locales de cada proceso con los datos recibidos.
- *
- * @param rank El rank del proceso actual.
- * @param rows La cantidad de filas en la malla.
- * @param cols La cantidad de columnas en la malla.
- * @param size La cantidad de procesos en el sistema.
- * @param local_data Un mapa donde las llaves son los ranks y los valores las strings de data.
- * 
- * @return void
- */
 void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local_data) {
     int row = rank / cols;
     int col = rank % cols;
@@ -107,78 +70,6 @@ void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local
     }
 }
 
-string bubbleSort(const string& input) {
-    string sortedString = input;
-    int n = sortedString.size();
-
-    for (int i = 0; i < n - 1; ++i) {
-        for (int j = 0; j < n - i - 1; ++j) {
-            if (sortedString[j] > sortedString[j + 1]) {
-                swap(sortedString[j], sortedString[j + 1]);
-            }
-        }
-    }
-
-    return sortedString;
-}
-
-void merge(string& str, int left, int mid, int right) {
-    int n1 = mid - left + 1;
-    int n2 = right - mid;
-
-    string leftSub = str.substr(left, n1);
-    string rightSub = str.substr(mid + 1, n2);
-
-    int i = 0, j = 0, k = left;
-    while (i < n1 && j < n2) {
-        if (leftSub[i] <= rightSub[j]) {
-            str[k++] = leftSub[i++];
-        } else {
-            str[k++] = rightSub[j++];
-        }
-    }
-
-    while (i < n1) {
-        str[k++] = leftSub[i++];
-    }
-
-    while (j < n2) {
-        str[k++] = rightSub[j++];
-    }
-}
-
-// Merge Sort Function
-void mergeSortHelper(string& str, int left, int right) {
-    if (left < right) {
-        int mid = left + (right - left) / 2;
-
-        mergeSortHelper(str, left, mid);
-        mergeSortHelper(str, mid + 1, right);
-
-        merge(str, left, mid, right);
-    }
-}
-
-string mergeSort(const string& input) {
-    string sortedString = input;
-    mergeSortHelper(sortedString, 0, sortedString.size() - 1);
-    return sortedString;
-}
-
-/**
- * @brief Simula un proceso de broadcast inverso.
- * 
- * La funcion hace el paso de broadcast inverso donde los procesos de la diagonal envían su data a todos los procesos de su fila.
- * Los procesos que no se encuentran en la diagonal solo reciben datos de la diagonal.
- * 
- * @param rank El rank del proceso actual.
- * @param rows La cantidad de filas en la malla.
- * @param cols La cantidad de columnas en la malla.
- * @param starting_data El string de data que el proceso diagonal va a enviar.
- * @param resulting_data A map where the keys are ranks and the values are the received data.
- *
- * @return void
- */
 void reverse_broadcast_step(int rank, int rows, int cols, const string& starting_data, map<int, string>& resulting_data) {
     int row = rank / cols;
     int col = rank % cols;
@@ -199,19 +90,6 @@ void reverse_broadcast_step(int rank, int rows, int cols, const string& starting
         resulting_data[0] = received_string;
     }
 }
-
-/**
- * @brief Sorts the characters in the result string based on their ranks and prints the reordered string.
- *
- * This function takes a vector of aggregated ranks and a result string as input.
- * It determines the final order of characters in the result string based on their ranks.
- * The characters are then sorted in ascending order of their ranks and printed to the console.
- *
- * @param aggregated_ranks A vector of integers representing the ranks of each character in the result string.
- * @param result A string containing the characters to be reordered.
- *
- * @return void
- */
 string sort_and_print_by_rank(const vector<int>& aggregated_ranks, const string& result) {
     vector<pair<int, char>> rank_with_indices;
 
@@ -225,30 +103,9 @@ string sort_and_print_by_rank(const vector<int>& aggregated_ranks, const string&
     for(const auto& rank : rank_with_indices) {
         sorted_result += rank.second;
     }
-
-    //cout << "\n========================== Aggregated Ranks: ";
-    //copy(aggregated_ranks.begin(), aggregated_ranks.end(), ostream_iterator<int>(cout, " "));
-    //cout << endl;
-
-    //cout << "========================== Reordered String:" << sorted_result << endl;
     return sorted_result;
 }
 
-/**
- * @brief Calculates and prints the ranks of characters in a given string.
- *
- * This function calculates the ranks of characters in a given string based on their order in the original string.
- * It then prints the ranks, the original string, and the final result string.
- * The ranks are calculated using the local_rank function and aggregated across processes using MPI communication.
- *
- * @param rank The rank of the current process.
- * @param rows The number of rows in the process grid.
- * @param cols The number of columns in the process grid.
- * @param starting_data The initial string of characters for the current process.
- * @param result The final string of characters after all processes have completed their calculations.
- *
- * @return void
- */
 string calculate_and_print_ranks(int rank, int rows, int cols, const string& starting_data, const string& result) {
     string sorted_starting_data = starting_data;
 
@@ -265,10 +122,6 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
     t10 = MPI_Wtime();
 
     string sorted_result;
-
-    //cout << "\n-=-=-=-=-= Process " << rank << " Local ranks: ";
-    //copy(local_ranking.begin(), local_ranking.end(), ostream_iterator<int>(cout, " "));
-    //cout << endl;
 
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -432,9 +285,9 @@ int main(int argc, char** argv) {
     // SORT, LOCAL, RANKING, REDUCE Y GATHER
     string final_output = calculate_and_print_ranks(rank, rows, cols, gossip_result, result2);
 
-    // if (rank == 0) cout << "Final result: " << final_output << endl;
-
     t_final = MPI_Wtime();
+
+    // if (rank == 0) cout << "Final result: " << final_output << endl;
 
     if (rank == 0)
     {
