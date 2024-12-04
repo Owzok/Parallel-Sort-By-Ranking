@@ -46,10 +46,10 @@ vector<int> local_rank(const string& local_A, const string& A) {
 
     return rank_counts;
 }
-void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local_data) {
+void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local_data, int msg_size) {
     int row = rank / cols;
     int col = rank % cols;
-    char recv_buffer[400000];
+    char* recv_buffer = new char[msg_size * size + 1];
 
     for (int step = 0; step < rows - 1; ++step) {
         int send_to = ((row + 1) % rows) * cols + col;      // same col but below
@@ -58,22 +58,24 @@ void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local
         string send_buffer = concatenar(local_data);
 
         MPI_Request send_request, recv_request;
-        MPI_Irecv(recv_buffer, 400000, MPI_CHAR, receive_from, 0, MPI_COMM_WORLD, &recv_request);
+        MPI_Irecv(recv_buffer, msg_size * size + 1, MPI_CHAR, receive_from, 0, MPI_COMM_WORLD, &recv_request);
         MPI_Isend(send_buffer.c_str(), send_buffer.size() + 1, MPI_CHAR, send_to, 0, MPI_COMM_WORLD, &send_request);
 
         MPI_Wait(&recv_request, MPI_STATUS_IGNORE);
         MPI_Wait(&send_request, MPI_STATUS_IGNORE);
 
         string received_string(recv_buffer);
+        delete[] recv_buffer;
+
         int source_rank = (rank - cols + size) % size; // calculate the rank of the data sender
         local_data[source_rank] = received_string;
     }
 }
 
-void reverse_broadcast_step(int rank, int rows, int cols, const string& starting_data, map<int, string>& resulting_data) {
+void reverse_broadcast_step(int rank, int rows, int cols, const string& starting_data, map<int, string>& resulting_data, int msg_size, int size) {
     int row = rank / cols;
     int col = rank % cols;
-    char recv_buffer[400000];
+    char* recv_buffer = new char[msg_size * size + 1];
 
     if (col == row) {
         for (int c = 0; c < cols; ++c) {
@@ -85,8 +87,10 @@ void reverse_broadcast_step(int rank, int rows, int cols, const string& starting
         resulting_data[0] = starting_data;
     } else {
         int send_from = row * cols + row;
-        MPI_Recv(recv_buffer, 400000, MPI_CHAR, send_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(recv_buffer, msg_size * size + 1, MPI_CHAR, send_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         string received_string(recv_buffer);
+        delete[] recv_buffer;
+        
         resulting_data[0] = received_string;
     }
 }
@@ -106,7 +110,7 @@ string sort_and_print_by_rank(const vector<int>& aggregated_ranks, const string&
     return sorted_result;
 }
 
-string calculate_and_print_ranks(int rank, int rows, int cols, const string& starting_data, const string& result) {
+string calculate_and_print_ranks(int rank, int rows, int cols, const string& starting_data, const string& result, int msg_size, int size) {
     string sorted_starting_data = starting_data;
 
     //SORT (4)
@@ -128,7 +132,7 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
     int row = rank / cols;
     int col = rank % cols;
     int diagonal_process = row * cols + row;
-    char recv_buffer[400000];
+    char* recv_buffer = new char[msg_size * size + 1];
     string recv_word;
 
     // REDUCE (6)
@@ -186,15 +190,17 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
                 vector<int> received_ranks(aggregated_ranks.size());
                 // Recibe la info de cada diagonal
                 MPI_Recv(received_ranks.data(), received_ranks.size(), MPI_INT, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                MPI_Recv(recv_buffer, 400000, MPI_CHAR, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(recv_buffer, msg_size * size + 1, MPI_CHAR, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 // Tranforma la información del buffer en una string
                 string received_string(recv_buffer);
+                
                 recv_word += received_string;
 
                 // cout << "Process 0 received ranks from diagonal process " << d_proc << endl; (COMENTADO)
                 // Expande global ranks
                 global_ranks.insert(global_ranks.end(), received_ranks.begin(), received_ranks.end());
             }
+            delete[] recv_buffer;
 
             t14 = MPI_Wtime();
 
@@ -270,20 +276,20 @@ int main(int argc, char** argv) {
     // GOSSIP (2)
 
     t3 = MPI_Wtime();
-    gossip_step(rank, rows, cols, size, local_data);
+    gossip_step(rank, rows, cols, size, local_data, msg_size/size);
     t4 = MPI_Wtime();
     string gossip_result = concatenar(local_data);
 
     // BROADCAST (3)
 
     t5 = MPI_Wtime();
-    reverse_broadcast_step(rank, rows, cols, gossip_result, resulting_data);
+    reverse_broadcast_step(rank, rows, cols, gossip_result, resulting_data, msg_size, size);
     t6 = MPI_Wtime();
 
     string result2 = concatenar(resulting_data);
 
     // SORT, LOCAL, RANKING, REDUCE Y GATHER
-    string final_output = calculate_and_print_ranks(rank, rows, cols, gossip_result, result2);
+    string final_output = calculate_and_print_ranks(rank, rows, cols, gossip_result, result2, msg_size, size);
 
     t_final = MPI_Wtime();
 
