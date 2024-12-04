@@ -28,6 +28,7 @@ string generateRandomString(size_t length) {
 
     return randomString;
 }
+
 string concatenar(const map<int, string>& data_by_rank) {
     string result;
     for (const auto& entry : data_by_rank) {
@@ -48,7 +49,7 @@ vector<int> local_rank(const string& local_A, const string& A) {
 void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local_data) {
     int row = rank / cols;
     int col = rank % cols;
-    char recv_buffer[10000];
+    char recv_buffer[400000];
 
     for (int step = 0; step < rows - 1; ++step) {
         int send_to = ((row + 1) % rows) * cols + col;      // same col but below
@@ -57,7 +58,7 @@ void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local
         string send_buffer = concatenar(local_data);
 
         MPI_Request send_request, recv_request;
-        MPI_Irecv(recv_buffer, 10000, MPI_CHAR, receive_from, 0, MPI_COMM_WORLD, &recv_request);
+        MPI_Irecv(recv_buffer, 400000, MPI_CHAR, receive_from, 0, MPI_COMM_WORLD, &recv_request);
         MPI_Isend(send_buffer.c_str(), send_buffer.size() + 1, MPI_CHAR, send_to, 0, MPI_COMM_WORLD, &send_request);
 
         MPI_Wait(&recv_request, MPI_STATUS_IGNORE);
@@ -72,7 +73,7 @@ void gossip_step(int rank, int rows, int cols, int size, map<int, string>& local
 void reverse_broadcast_step(int rank, int rows, int cols, const string& starting_data, map<int, string>& resulting_data) {
     int row = rank / cols;
     int col = rank % cols;
-    char recv_buffer[10000];
+    char recv_buffer[400000];
 
     if (col == row) {
         for (int c = 0; c < cols; ++c) {
@@ -84,7 +85,7 @@ void reverse_broadcast_step(int rank, int rows, int cols, const string& starting
         resulting_data[0] = starting_data;
     } else {
         int send_from = row * cols + row;
-        MPI_Recv(recv_buffer, 10000, MPI_CHAR, send_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Recv(recv_buffer, 400000, MPI_CHAR, send_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         string received_string(recv_buffer);
         resulting_data[0] = received_string;
     }
@@ -127,7 +128,7 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
     int row = rank / cols;
     int col = rank % cols;
     int diagonal_process = row * cols + row;
-    char recv_buffer[10000];
+    char recv_buffer[400000];
     string recv_word;
 
     // REDUCE (6)
@@ -185,7 +186,7 @@ string calculate_and_print_ranks(int rank, int rows, int cols, const string& sta
                 vector<int> received_ranks(aggregated_ranks.size());
                 // Recibe la info de cada diagonal
                 MPI_Recv(received_ranks.data(), received_ranks.size(), MPI_INT, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-                MPI_Recv(recv_buffer, 10000, MPI_CHAR, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                MPI_Recv(recv_buffer, 400000, MPI_CHAR, d_proc, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 // Tranforma la información del buffer en una string
                 string received_string(recv_buffer);
                 recv_word += received_string;
